@@ -1,0 +1,62 @@
+---
+title: "Modal"
+icon: "align-justify"
+---
+
+The default connection flow opens a modal where users can select from all enabled wallets. No developer setup required.
+
+<Card title="Modal Demo" icon="play" horizontal="false" href="https://demo.aurumsdk.com/?config=120010ffffff00">
+  See the modal in action
+</Card>
+
+## Basic Usage
+
+<CodeGroup>
+
+```typescript Core SDK
+const address = await aurum.connect();
+```
+
+
+```typescript React Hooks
+const { connect } = useConnect();
+
+const address = await connect();
+```
+
+</CodeGroup>
+
+## Customization
+
+Control the modal appearance through the `brand` configuration:
+
+```typescript
+const aurum = new Aurum({
+  brand: {
+    appName: 'My App',
+    logo: 'https://example.com/logo.png',
+    theme: 'dark',
+    primaryColor: '#6366f1',
+    borderRadius: 'lg',
+    walletLayout: 'grid', // or 'stacked'
+  },
+  wallets: {
+    embedded: { projectId: 'your-cdp-id' },
+    walletConnect: { projectId: 'your-reown-id' },
+    exclude: ['rabby', 'brave'], // hide specific wallets
+  },
+});
+```
+
+See [Core SDK Configuration](/api-reference/core#configuration-options) for all available options.
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Widget" icon="brackets-curly" href="/api-reference/ui-modes/widget">
+    Embed the UI inline
+  </Card>
+  <Card title="Headless" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build a fully custom UI
+  </Card>
+</CardGroup>

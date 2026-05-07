@@ -1,0 +1,76 @@
+---
+title: "Viem"
+description: "Use the viem library with Aurum"
+icon: "v"
+---
+
+### Wallet Client
+
+```typescript
+import { createWalletClient, custom } from 'viem';
+import { aurum } from './aurum';
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+```
+
+### Sign a Message
+
+```typescript
+const [address] = await walletClient.getAddresses();
+
+const signature = await walletClient.signMessage({ 
+  account: address, 
+  message: 'Hello!',
+});
+```
+
+### Send a Transaction
+
+```typescript
+import { parseEther } from 'viem';
+
+const [address] = await walletClient.getAddresses();
+
+const hash = await walletClient.sendTransaction({
+  account: address,
+  to: '0x...',
+  value: parseEther('0.01'),
+});
+```
+
+### Write to a Contract
+
+```typescript
+const hash = await walletClient.writeContract({
+  address: tokenAddress,
+  abi: erc20Abi,
+  functionName: 'transfer',
+  args: [recipient, amount],
+  account: address,
+});
+```
+
+### Public Client
+
+Use a separate public client for read operations
+
+```typescript
+import { createPublicClient, http } from 'viem';
+
+const publicClient = createPublicClient({
+  transport: http('https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY'),
+});
+
+const balance = await publicClient.readContract({
+  address: tokenAddress,
+  abi: erc20Abi,
+  functionName: 'balanceOf',
+  args: [walletAddress],
+});
+```
+
+<Info>
+  When creating a viem public client, use a dedicated RPC URL from a provider like Alemchy or Infura instead of using `aurum.rpcProvider`.
+</Info>

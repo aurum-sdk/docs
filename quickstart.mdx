@@ -1,0 +1,162 @@
+---
+title: "Quickstart"
+icon: "bolt"
+description: "Build your dapp with Aurum in minutes"
+---
+
+## Prerequisites
+
+<CardGroup cols={2}>
+  <Card title="Coinbase CDP" href="https://portal.cdp.coinbase.com/">
+    Get your embedded wallet project ID
+  </Card>
+  <Card title="Reown Dashboard" href="https://dashboard.reown.com/">
+    Get your WalletConnect project ID
+  </Card>
+</CardGroup>
+
+<Info>
+  Ensure your development URL is added to the domain allowlist for both project IDs before continuing.
+</Info>
+
+## Installation
+
+Install the Aurum SDK and viem (or the web3 library of your choice)
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core viem
+```
+
+
+```bash npm
+npm install @aurum-sdk/core viem
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core viem
+```
+
+
+```bash bun
+bun add @aurum-sdk/core viem
+```
+
+</CodeGroup>
+
+## Setup
+
+1. Initialize Aurum
+
+```typescript
+import { Aurum } from '@aurum-sdk/core';
+
+const aurum = new Aurum({
+  brand: {
+    appName: 'My App',
+  },
+  wallets: {
+    embedded: { projectId: 'your-cdp-project-id' },
+    walletConnect: { projectId: 'your-reown-project-id' },
+  },
+});
+```
+
+2. Create Viem client (or the web3 library of your choice)
+
+```typescript
+import { createWalletClient, custom } from 'viem';
+import { aurum } from "./aurum";
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+```
+
+3. Add basic state management (`connect`, `disconnect`, `personal_sign`, `accountsChanged`, etc)
+
+```typescript
+import { useEffect, useState } from "react";
+import { aurum } from "./aurum";
+import { walletClient } from "./viem";
+
+export default function App() {
+  const [address, setAddress] = useState<`0x${string}` | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if connected on page load
+  useEffect(() => {
+    aurum.isConnected().then(async (isConnected) => {
+      if (isConnected) {
+        const user = await aurum.getUserInfo();
+        setAddress(user?.publicAddress ?? null);
+      }
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Listen for account changes
+  useEffect(() => {
+    const handleAccountsChanged = (accounts: string[]) => {
+      setAddress(accounts[0] ?? null);
+    };
+
+    aurum.rpcProvider.on?.("accountsChanged", handleAccountsChanged);
+
+    return () => {
+      aurum.rpcProvider.off?.("accountsChanged", handleAccountsChanged);
+    };
+  }, []);
+
+  async function connect() {
+    const publicAddress = await aurum.connect();
+    setAddress(publicAddress);
+  }
+
+  async function disconnect() {
+    await aurum.disconnect();
+    setAddress(null);
+  }
+
+  async function signMessage() {
+    const [account] = await walletClient.getAddresses();
+    const signature = await walletClient.signMessage({
+      account,
+      message: "Hello from Aurum!",
+    });
+    console.log("signature", signature);
+  }
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {!address ? (
+        <button onClick={connect}>Connect Wallet</button>
+      ) : (
+        <div>
+          <p>User: {address}</p>
+          <button onClick={signMessage}>Sign Message</button>
+          <button onClick={disconnect}>Disconnect</button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Customization" icon="palette" href="/customization">
+    Theme the modal
+  </Card>
+  <Card title="Core SDK" icon="dice-d6" href="/api-reference/core">
+    Full API reference
+  </Card>
+  <Card title="React Hooks" icon="atom-simple" href="/api-reference/react-hooks">
+    Hooks API Reference
+  </Card>
+</CardGroup>

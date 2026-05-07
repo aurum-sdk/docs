@@ -1,0 +1,87 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "theme": "mint",
+  "name": "Aurum SDK Docs",
+  "colors": {
+    "primary": "#D7A018",
+    "light": "#ffc000",
+    "dark": "#FFD700"
+  },
+  "favicon": "/aurum.favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Home",
+        "icon": "house-blank",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "customization",
+              "pricing",
+              "faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "icon": "wallet",
+        "groups": [
+          {
+            "group": "API reference",
+            "pages": [
+              "api-reference/core",
+              "api-reference/react-hooks"
+            ]
+          },
+          {
+            "group": "UI Modes",
+            "pages": [
+              "api-reference/ui-modes/modal",
+              "api-reference/ui-modes/widget",
+              "api-reference/ui-modes/headless"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "api-reference/integrations/viem",
+              "api-reference/integrations/ethers-v5",
+              "api-reference/integrations/ethers-v6"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "https://github.com/aurum-sdk/aurum/issues"
+      }
+    ]
+  },
+  "contextual": {
+    "options": [
+     "copy",
+     "view",
+     "chatgpt",
+     "claude",
+     "perplexity",
+     "mcp",
+     "cursor",
+     "vscode"
+   ]
+  },
+  "appearance": {
+    "default": "system"
+  }
+}

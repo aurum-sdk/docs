@@ -1,0 +1,44 @@
+---
+title: "FAQ"
+icon: "circle-question"
+description: "Common questions and troubleshooting"
+---
+
+## General
+
+<AccordionGroup>
+  <Accordion title="Are email wallets shared among all dapps using Aurum?">
+    No. Email wallets are scoped 1:1 with the `wallets.embedded.projectId` passed into the Aurum constructor. A user logging in with the same email address on apps with different project IDs will receive separate wallets.
+
+    This means email users belong exclusively to your application and cannot access their wallet outside of your app.
+  </Accordion>
+  <Accordion title="Do I need to use email wallets?">
+    No. Coinbase Embedded Wallets (email) can be disabled
+
+    ```typescript
+        const aurum = new Aurum({ 
+          wallets: { 
+            exclude: ['email'],
+          },
+        });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Email wallet fails to send OTP">
+    Ensure your domain is added to the [**Coinbase Developer Platform**](https://portal.cdp.coinbase.com) domain allowlist. See [How to Configure Domains](https://docs.cdp.coinbase.com/embedded-wallets/domains#how-to-configure-domains).
+  </Accordion>
+  <Accordion title="WalletConnect login is not working">
+    Ensure the URL you are testing on is added to the [**Reown Dashboard**](dashboard.reown.com) allowlist.
+  </Accordion>
+  <Accordion title="Sourcemap warnings in console">
+    These come from third party libraries the Aurum SDK depends on. To suppress the warnings, add the following to your `.env` file
+
+    ```shellscript
+    GENERATE_SOURCEMAP=false
+    ```
+  </Accordion>
+</AccordionGroup>

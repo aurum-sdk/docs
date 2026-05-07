@@ -1,0 +1,53 @@
+---
+title: "Widget"
+icon: "brackets-curly"
+description: "Embed the wallet connection widget directly into your app"
+---
+
+<Card title="Aurum Widget" icon="play" horizontal={false} href="https://demo.aurumsdk.com/?config=120000ffffff00">
+  See the widget in action
+</Card>
+
+## Basic Usage
+
+```typescript
+import { Aurum } from '@aurum-sdk/core';
+import { ConnectWidget } from '@aurum-sdk/core/widgets';
+
+const aurum = new Aurum({
+  wallets: {
+    embedded: { projectId: 'your-cdp-id' },
+    walletConnect: { projectId: 'your-reown-id' },
+  },
+});
+
+function App() {
+  return (
+    <ConnectWidget
+      aurum={aurum}
+      onConnect={(userInfo) => console.log('Connected:', userInfo.address)}
+    />
+  );
+}
+```
+
+## `ConnectWidget` Props
+
+<ParamField body="aurum" type="Aurum" required>
+  The initialized Aurum instance
+</ParamField>
+
+<ParamField body="onConnect" type="(userInfo: UserInfo) => void">
+  Callback fired when a wallet successfully connects. Receives the connected user's info.
+</ParamField>
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Modal Mode" icon="align-justify" href="/api-reference/ui-modes/modal">
+    Default modal UX
+  </Card>
+  <Card title="Headless Mode" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build a fully custom UI
+  </Card>
+</CardGroup>

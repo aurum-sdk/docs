@@ -1,0 +1,195 @@
+---
+title: "React Hooks"
+description: "API reference for Aurum React Hooks"
+icon: "atom-simple"
+---
+
+The React Hooks package provides hooks for accessing user state, connecting to and disconnecting from wallets.
+
+## Installation
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash npm
+npm install @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash bun
+bun add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+</CodeGroup>
+
+## Provider Setup
+
+Wrap your application root in `AurumProvider` with an initialized `Aurum` instance:
+
+```typescript
+import { Aurum } from '@aurum-sdk/core';
+import { AurumProvider } from '@aurum-sdk/hooks';
+
+const aurum = new Aurum({
+  brand: { appName: 'Your App Name' },
+  wallets: {
+    embedded: { projectId: 'cdp-project-id' },
+    walletConnect: { projectId: 'reown-project-id' },
+  },
+});
+
+function App() {
+  return (
+    <AurumProvider aurum={aurum}>
+      <YourApp />
+    </AurumProvider>
+  );
+}
+```
+
+See [Core SDK Configuration](/api-reference/core#configuration-options) for all available `Aurum` options.
+
+## Available Hooks
+
+### `useAurum()`
+
+Access the raw Aurum SDK instance for advanced use cases.
+
+```typescript
+const { aurum, isReady } = useAurum();
+```
+
+<Expandable title="Return values">
+  <ParamField body="aurum" type="Aurum">
+    The Aurum SDK instance passed to `AurumProvider`.
+  </ParamField>
+  <ParamField body="isReady" type="boolean">
+    `true` once the SDK has finished initializing and restored any persisted connection.
+  </ParamField>
+</Expandable>
+
+### `useAccount()`
+
+Access connected user information. Updates automatically when the connection state changes.
+
+```typescript
+const {
+  publicAddress,
+  walletName,
+  walletId,
+  email,
+  isConnected,
+  isInitializing,
+} = useAccount();
+```
+
+<Expandable title="Return values">
+  <ParamField body="publicAddress" type="string | undefined">
+    The connected wallet address
+  </ParamField>
+  <ParamField body="walletName" type="WalletName | undefined">
+    Display name of the connected wallet
+  </ParamField>
+  <ParamField body="walletId" type="WalletId | undefined">
+    Identifier of the connected wallet
+  </ParamField>
+  <ParamField body="email" type="string | undefined">
+    User's email (only present for email wallets)
+  </ParamField>
+  <ParamField body="isConnected" type="boolean">
+    `true` if a wallet is currently connected
+  </ParamField>
+  <ParamField body="isInitializing" type="boolean">
+    `true` while the SDK is checking for / restoring a persisted connection
+  </ParamField>
+</Expandable>
+
+### `useConnect()`
+
+Connect to a wallet via the modal or directly by wallet ID.
+
+```typescript
+const { connect, isPending, error } = useConnect();
+
+// Open wallet selection modal
+await connect();
+
+// Or connect directly to a specific wallet (skips modal)
+import { WalletId } from '@aurum-sdk/types';
+
+await connect(WalletId.MetaMask);
+```
+
+<Expandable title="Return values">
+  <ParamField body="connect" type="(walletId?: WalletId) => Promise<string>">
+    Opens the modal or connects directly if `walletId` is provided. Returns the connected address.
+  </ParamField>
+  <ParamField body="isPending" type="boolean">
+    `true` while a connection attempt is in progress.
+  </ParamField>
+  <ParamField body="error" type="Error | null">
+    The error if the last connection attempt failed.
+  </ParamField>
+</Expandable>
+
+<Info>
+  `WalletId.Email` cannot be used with `connect(walletId)` — use the dedicated [Headless API](/api-reference/ui-modes/headless) methods instead.
+</Info>
+
+<Warning>
+  Do not use `useConnect()` with `<ConnectWidget>`. Instead use `useAccount()` to react to connection state changes when using the widget.
+</Warning>
+
+### `useDisconnect()`
+
+Disconnect the current wallet.
+
+```typescript
+const { disconnect } = useDisconnect();
+
+await disconnect();
+```
+
+### `useChain()`
+
+Access current chain information and switch networks.
+
+```typescript
+import { sepolia } from 'viem/chains';
+
+const { chainId, switchChain, isPending, error } = useChain();
+
+await switchChain(sepolia.id, sepolia);
+```
+
+<Expandable title="Return values">
+  <ParamField body="chainId" type="string | undefined">
+    The current chain ID as a hex string.
+  </ParamField>
+  <ParamField body="switchChain" type="(chainId: number | string, chain?: Chain) => Promise<void>">
+    Switches to the specified chain. Pass the chain definition to prompt the user to add it if it's not yet configured.
+  </ParamField>
+  <ParamField body="error" type="Error | null">
+    The error if the user rejected the request.
+  </ParamField>
+</Expandable>
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Core SDK" icon="dice-d6" href="/api-reference/core">
+    Framework-agnostic API
+  </Card>
+  <Card title="Headless Mode" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build custom connection UIs
+  </Card>
+</CardGroup>

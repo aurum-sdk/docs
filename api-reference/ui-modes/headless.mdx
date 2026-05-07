@@ -1,0 +1,180 @@
+---
+title: "Headless"
+icon: "code-simple"
+description: "Create your own wallet connection UX"
+---
+
+Apps that want full control over the connection flow can connect directly to any wallet, bypassing Aurum's UI.
+
+<Card title="Custom UI" icon="play" horizontal="false" href="https://demo.aurumsdk.com/?config=120020ffffff00">
+  See headless mode in action
+</Card>
+
+## Overview
+
+Headless mode supports three connection methods
+
+<CardGroup cols={3}>
+  <Card title="Direct Connect" icon="bolt">
+    One-line connection to injected wallets
+  </Card>
+  <Card title="Email Auth" icon="envelope">
+    Three-step OTP flow for embedded wallet
+  </Card>
+  <Card title="WalletConnect URI" icon="qrcode">
+    Display a custom QR code
+  </Card>
+</CardGroup>
+
+## Direct Wallet Connection
+
+Connect to installed wallets directly (MetaMask, Phantom, WalletConnect modal, etc) without showing the Aurum modal
+
+<CodeGroup>
+
+```typescript Core SDK
+import { WalletId } from '@aurum-sdk/types';
+
+const address = await aurum.connect(WalletId.MetaMask);
+```
+
+
+```typescript React Hooks
+import { WalletId } from '@aurum-sdk/types';
+
+const { connect } = useConnect();
+const address = await connect(WalletId.MetaMask);
+```
+
+</CodeGroup>
+
+<Expandable title="Supported Wallet IDs">
+  - `WalletId.MetaMask`
+  - `WalletId.Phantom`
+  - `WalletId.CoinbaseWallet`
+  - `WalletId.Rabby`
+  - `WalletId.Brave`
+  - `WalletId.WalletConnect`
+</Expandable>
+
+<Info>
+  `Email` and `WalletConnect` (using custom QR code) have dedicated methods below and cannot be used with `connect(walletId)`.
+</Info>
+
+## Email Authentication
+
+A three-step OTP flow for Coinbase Embedded Wallet
+
+<Steps>
+  <Step title="Send OTP">
+    Call `emailAuthStart(email)` with the user’s email address.
+  </Step>
+  <Step title="Collect OTP">
+    Prompt the user to enter the OTP code from their inbox.
+  </Step>
+  <Step title="Verify & Connect">
+    Call `emailAuthVerify(flowId, otp)` to complete the connection.
+  </Step>
+</Steps>
+
+<CodeGroup>
+
+```typescript Core SDK
+// Step 1: Send OTP
+const { flowId } = await aurum.emailAuthStart('user@example.com');
+
+// Step 2: User enters OTP from their email
+const otp = await promptUserForOTP();
+
+// Step 3: Verify and connect
+const { address, email, isNewUser } = await aurum.emailAuthVerify(flowId, otp);
+```
+
+
+```typescript React Hooks
+const { emailAuthStart, emailAuthVerify } = useConnect();
+
+// Step 1: Send OTP
+const { flowId } = await emailAuthStart('user@example.com');
+
+// Step 2: User enters OTP from their email
+const otp = await promptUserForOTP();
+
+// Step 3: Verify and connect
+const { address, email, isNewUser } = await emailAuthVerify(flowId, otp);
+```
+
+</CodeGroup>
+
+<Expandable title="Method API reference">
+  <ParamField body="emailAuthStart(email)" type="Promise<{ flowId: string }>">
+    Sends an OTP code to the provided email address. Returns a `flowId` needed for verification.
+  </ParamField>
+  <ParamField body="emailAuthVerify(flowId, otp)" type="Promise<{ address: string, email: string, isNewUser: boolean }>">
+    Verifies the OTP and completes the wallet connection. Returns the connected address and whether this is a new user.
+  </ParamField>
+</Expandable>
+
+## WalletConnect URI
+
+Display your own QR code for WalletConnect-compatible wallets
+
+<Steps>
+  <Step title="Get Session URI">
+    Call `getWalletConnectSession()` to generate a connection URI.
+  </Step>
+  <Step title="Display QR Code">
+    Render the URI as a QR code using your preferred library.
+  </Step>
+  <Step title="Wait for Connection">
+    The `waitForConnection()` promise resolves when the user scans and approves.
+  </Step>
+</Steps>
+
+<CodeGroup>
+
+```typescript Core SDK
+const { uri, waitForConnection } = await aurum.getWalletConnectSession();
+
+// Display your own QR code
+renderQRCode(uri);
+
+// Wait for user to scan and approve
+try {
+  const address = await waitForConnection();
+} catch (error) {
+  console.error(error);
+}
+```
+
+
+```typescript React Hooks
+const { getWalletConnectSession } = useConnect();
+
+const { uri, waitForConnection } = await getWalletConnectSession();
+
+// Display your own QR code
+renderQRCode(uri);
+
+// Wait for user to scan and approve
+const address = await waitForConnection();
+```
+
+</CodeGroup>
+
+<Expandable title="Method API reference">
+  <ParamField body="getWalletConnectSession()" type="Promise<{ uri: string, waitForConnection: () => Promise<`0x${string}`> }>">
+    Initiates a WalletConnect session. Returns the URI for QR code generation and a promise that resolves to the connected address.
+  </ParamField>
+</Expandable>
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Modal Mode" icon="align-justify" href="/api-reference/ui-modes/modal">
+    Default modal UX
+  </Card>
+  <Card title="Widget" icon="brackets-curly" href="/api-reference/ui-modes/widget">
+    Embed the UI inline
+  </Card>
+</CardGroup>

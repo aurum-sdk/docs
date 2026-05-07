@@ -1,0 +1,50 @@
+---
+title: "Ethers v5"
+description: "Use the ethers v5 library with Aurum"
+icon: "5"
+---
+
+### Provider
+
+```typescript
+import { ethers } from 'ethers';
+import { aurum } from './aurum';
+
+const provider = new ethers.providers.Web3Provider(aurum.rpcProvider);
+```
+
+### Sign a Message
+
+```typescript
+const signer = provider.getSigner();
+const signature = await signer.signMessage('Hello!');
+```
+
+### Send a Transaction
+
+```typescript
+const signer = provider.getSigner();
+const tx = await signer.sendTransaction({ 
+  to: '0x...',
+  value: ethers.utils.parseEther('0.01'),
+});
+
+const receipt = await tx.wait();
+```
+
+### Read Contract Data
+
+```typescript
+const erc20 = new ethers.Contract(tokenAddress, erc20Abi, provider);
+const balance = await erc20.balanceOf(walletAddress);
+```
+
+### Write to a Contract
+
+```typescript
+const signer = provider.getSigner();
+const erc20 = new ethers.Contract(tokenAddress, erc20Abi, signer);
+
+const tx = await erc20.transfer(recipient, amount);
+await tx.wait();
+```

@@ -1,0 +1,297 @@
+---
+title: "Core SDK"
+description: "API reference for Aurum Core SDK"
+icon: "dice-d6"
+---
+
+## Installation
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core
+```
+
+
+```bash npm
+npm install @aurum-sdk/core
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core
+```
+
+
+```bash bun
+bun add @aurum-sdk/core
+```
+
+</CodeGroup>
+
+## Configuration Options
+
+The `Aurum` instance accepts three configuration parameters - `brand`, `wallets`, and `telemetry`.
+
+<Accordion title="brand" icon="palette">
+  Customize the look and feel of the modal.
+
+  <ParamField body="appName" type="string">
+    Your application's display name
+  </ParamField>
+  <ParamField body="logo" type="string">
+    URL to your logo image (`https://...` or `data:image/...`)
+  </ParamField>
+  <ParamField body="theme" type="'light' | 'dark'">
+    Color scheme for the modal
+  </ParamField>
+  <ParamField body="primaryColor" type="string">
+    Hex color for buttons and accents
+  </ParamField>
+  <ParamField body="borderRadius" type="'none' | 'sm' | 'md' | 'lg' | 'xl'">
+    Corner rounding for UI elements
+  </ParamField>
+  <ParamField body="font" type="string">
+    Custom font family
+  </ParamField>
+  <ParamField body="hideFooter" type="boolean">
+    Hides "powered by Aurum" footer
+  </ParamField>
+  <ParamField body="modalZIndex" type="number">
+    z-index for modal
+  </ParamField>
+  <ParamField body="walletLayout" type="'stacked' | 'grid'">
+    Wallet button arrangement
+  </ParamField>
+</Accordion>
+
+<Accordion title="wallets" icon="wallet">
+  Configure wallet providers and availability.
+
+  <ParamField body="embedded.projectId" type="string">
+    Project ID for email wallet functionality
+  </ParamField>
+  <ParamField body="walletConnect.projectId" type="string">
+    Project ID for WalletConnect
+  </ParamField>
+  <ParamField body="exclude" type="WalletId[]">
+    Wallet IDs to hide from the connection UI (`['email', 'metamask', etc]`)
+  </ParamField>
+</Accordion>
+
+<Accordion title="telemetry" icon="chart-line">
+  <ParamField body="telemetry" default="true" type="boolean">
+    Allows Aurum to log unexpected SDK errors using Sentry.io. No PII is ever collected — including email address, IP address, user location, or other identifiable information. Also applies to analytics and error tracking for Email login, Coinbase Wallet, and WalletConnect (Reown).
+  </ParamField>
+</Accordion>
+
+<Info>
+  **Embedded:** Get your project ID at [Coinbase CDP](https://portal.cdp.coinbase.com)
+
+  **WalletConnect:** Get your project ID at [Reown Dashboard](https://dashboard.reown.com/)
+</Info>
+
+### Example
+
+```typescript
+const aurum = new Aurum({
+  brand: { 
+    appName: 'Aurum Demo',
+    theme: 'dark',
+  },
+  wallets: {
+    embedded: { projectId: 'cdp-project-id' },
+    walletConnect: { projectId: 'reown-project-id' },
+  },
+});
+```
+
+## Aurum Properties
+
+### `rpcProvider`
+
+**Returns** `AurumRpcProvider`
+
+EIP-1193 compatible provider. Works with viem, ethers.js, and other web3 libraries.
+
+<CodeGroup>
+
+```typescript Direct Usage
+const accounts = await aurum.rpcProvider.request({ method: 'eth_accounts' });
+```
+
+
+```typescript Viem
+import { createWalletClient, custom } from 'viem';
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+```
+
+
+```typescript Ethers v5
+import { ethers } from 'ethers';
+
+const provider = new ethers.providers.Web3Provider(aurum.rpcProvider);
+```
+
+
+```typescript Ethers v6
+import { BrowserProvider } from 'ethers';
+
+const provider = new BrowserProvider(aurum.rpcProvider);
+```
+
+</CodeGroup>
+
+<Expandable title="EIP-1193 Event listeners">
+  The provider emits standard EIP-1193 events
+
+  ```typescript
+    aurum.rpcProvider.on?.('connect', (info: { chainId: string }) => { ... });
+    aurum.rpcProvider.on?.('accountsChanged', (accounts: string[]) => { ... });
+    aurum.rpcProvider.on?.('chainChanged', (chainId: string) => { ... });
+    aurum.rpcProvider.on?.('disconnect', () => { ... });
+  ```
+</Expandable>
+
+See full integration guides for [Viem](/integrations/viem), [Ethers v5](/integrations/ethers-v5) and [Ethers v6](/integrations/ethers-v6).
+
+## Aurum Methods
+
+### `whenReady()`
+
+**Returns** `Promise<void>`
+
+Waits for the SDK to finish initializing, such as restoring any previous connection after a page refresh.
+
+```typescript
+await aurum.whenReady();
+
+// Safe to use the provider
+const balance = await aurum.rpcProvider.request({
+  method: 'eth_getBalance',
+  params: [address, 'latest'],
+});
+```
+
+<Info>
+  await `whenReady()` before making calls to the `rpcProvider` to ensure persisted connections are restored and request is routed to the correct provider.
+</Info>
+
+### `connect(walletId?: WalletId)`
+
+**Returns** `` Promise<`0x${string}`> ``
+
+Opens the wallet connection modal. Optionally, pass a `walletId` to connect directly without showing the modal.
+
+```typescript
+// Show modal
+const address = await aurum.connect();
+
+// Connect directly to a specific wallet
+import { WalletId } from '@aurum-sdk/types';
+
+const address = await aurum.connect(WalletId.MetaMask);
+```
+
+<Info>
+  For `WalletId.Email` and custom WalletConnect QR Code flows, see the [Headless API](/api-reference/ui-modes/headless). `connect('email')` will throw an error. `connect('walletconnect')` will open the WalletConnect modal.
+</Info>
+
+<Warning>
+  Throws an error if the user closes the modal without connecting.
+</Warning>
+
+### `disconnect()`
+
+**Returns** `Promise<void>`
+
+Disconnects the currently connected wallet.
+
+```typescript
+await aurum.disconnect();
+```
+
+### `isConnected()`
+
+**Returns** `Promise<boolean>`
+
+Returns whether a wallet is currently connected.
+
+```typescript
+const connected = await aurum.isConnected();
+```
+
+### `getUserInfo()`
+
+**Returns** `Promise<UserInfo | undefined>`
+
+Returns info about the connected user, or `undefined` if not connected.
+
+```typescript
+const user = await aurum.getUserInfo();
+if (user) {
+  console.log(`Connected: ${user.walletName}`);
+}
+```
+
+<Expandable title="UserInfo type">
+  ```typescript
+    interface UserInfo {
+      publicAddress: string;
+      walletName: WalletName;
+      walletId: WalletId;
+      email?: string;
+    }
+  ```
+</Expandable>
+
+### `getChainId()`
+
+**Returns** `Promise<number>`
+
+Returns the current chain ID.
+
+```typescript
+const chainId = await aurum.getChainId();
+```
+
+### `switchChain(chainId, chain?)`
+
+**Returns** `Promise<void>`
+
+Switches to a different network. If the chain isn't added to the wallet, it will prompt the user to accept the new network and switch to it.
+
+```typescript
+import { polygon } from 'viem/chains';
+
+await aurum.switchChain(polygon.id, polygon);
+```
+
+<Warning>
+  Throws an error if the user rejects the request
+</Warning>
+
+### `updateBrandConfig(newConfig)`
+
+**Returns **`void`
+
+Updates the brand configuration at runtime (`theme`, `font`, `walletLayout`, etc).
+
+```typescript
+aurum.updateBrandConfig({ theme: 'light' });
+```
+
+### `updateWalletsConfig(newConfig)`
+
+**Returns** `void`
+
+Updates the wallets configuration at runtime. Currently only supports `exclude`.
+
+```typescript
+import { WalletId } from '@aurum-sdk/types';
+
+aurum.updateWalletsConfig({ exclude: [WalletId.Phantom] });
+```
