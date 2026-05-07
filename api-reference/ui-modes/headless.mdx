@@ -58,7 +58,9 @@ const address = await connect(WalletId.MetaMask);
 </Expandable>
 
 <Info>
-  `Email` and `WalletConnect` (using custom QR code) have dedicated methods below and cannot be used with `connect(walletId)`.
+  `connect(WalletId.WalletConnect)` is supported — it opens the built-in WalletConnect (AppKit) modal. Use [`getWalletConnectSession()`](#walletconnect-uri) instead if you want to render your own QR code.
+
+  `connect(WalletId.Email)` is **not** supported and will throw — use [`emailAuthStart` / `emailAuthVerify`](#email-authentication) for the OTP flow.
 </Info>
 
 ## Email Authentication

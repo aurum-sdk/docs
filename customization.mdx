@@ -16,7 +16,33 @@ description: "Explore ways to customize the Aurum UX"
 
 ### Wallets Options
 
-- **Enabled Wallets** control which wallets users are allowed to connect to
+- **Excluded Wallets** opt-out of specific wallets — by default, every supported wallet is shown. Pass an `exclude` array to hide ones you don't want.
+
+### Example
+
+```typescript
+import { Aurum } from '@aurum-sdk/core';
+import { WalletId } from '@aurum-sdk/types';
+
+const aurum = new Aurum({
+  brand: {
+    appName: 'My App',
+    theme: 'dark',
+    primaryColor: '#6366f1',
+    borderRadius: 'lg',
+    font: 'Inter, sans-serif',
+    hideFooter: true,
+    walletLayout: 'grid',
+  },
+  wallets: {
+    embedded: { projectId: 'your-cdp-id' },
+    walletConnect: { projectId: 'your-reown-id' },
+    exclude: [WalletId.Email, WalletId.Brave], // opt-out
+  },
+});
+```
+
+See [Core SDK Configuration](/api-reference/core#configuration-options) for the full option reference.
 
 ### See It In Action
 

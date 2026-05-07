@@ -39,6 +39,9 @@ const aurum = new Aurum({
     primaryColor: '#6366f1',
     borderRadius: 'lg',
     walletLayout: 'grid', // or 'stacked'
+    font: 'Inter, sans-serif',
+    hideFooter: true,     // hides "powered by Aurum"
+    modalZIndex: 9999,    // raise above your own overlays
   },
   wallets: {
     embedded: { projectId: 'your-cdp-id' },
@@ -48,7 +51,7 @@ const aurum = new Aurum({
 });
 ```
 
-See [Core SDK Configuration](/api-reference/core#configuration-options) for all available options.
+See [Core SDK Configuration](/api-reference/core#configuration-options) for the full `brand` and `wallets` reference.
 
 ---
 

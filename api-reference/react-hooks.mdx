@@ -118,7 +118,14 @@ const {
 Connect to a wallet via the modal or directly by wallet ID.
 
 ```typescript
-const { connect, isPending, error } = useConnect();
+const {
+  connect,
+  emailAuthStart,
+  emailAuthVerify,
+  getWalletConnectSession,
+  isPending,
+  error,
+} = useConnect();
 
 // Open wallet selection modal
 await connect();
@@ -133,8 +140,17 @@ await connect(WalletId.MetaMask);
   <ParamField body="connect" type="(walletId?: WalletId) => Promise<string>">
     Opens the modal or connects directly if `walletId` is provided. Returns the connected address.
   </ParamField>
+  <ParamField body="emailAuthStart" type="(email: string) => Promise<{ flowId: string }>">
+    Starts the [headless email OTP flow](/api-reference/ui-modes/headless#email-authentication). Returns a `flowId` for `emailAuthVerify`.
+  </ParamField>
+  <ParamField body="emailAuthVerify" type="(flowId: string, otp: string) => Promise<{ address: string, email: string, isNewUser: boolean }>">
+    Verifies the OTP and completes the email connection.
+  </ParamField>
+  <ParamField body="getWalletConnectSession" type="() => Promise<{ uri: string, waitForConnection: () => Promise<`0x${string}`> }>">
+    Initiates a [headless WalletConnect session](/api-reference/ui-modes/headless#walletconnect-uri) for rendering your own QR code.
+  </ParamField>
   <ParamField body="isPending" type="boolean">
-    `true` while a connection attempt is in progress.
+    `true` while a connection attempt is in progress (covers all four methods above).
   </ParamField>
   <ParamField body="error" type="Error | null">
     The error if the last connection attempt failed.
@@ -142,7 +158,7 @@ await connect(WalletId.MetaMask);
 </Expandable>
 
 <Info>
-  `WalletId.Email` cannot be used with `connect(walletId)` — use the dedicated [Headless API](/api-reference/ui-modes/headless) methods instead.
+  `WalletId.Email` cannot be used with `connect(walletId)` — use `emailAuthStart` / `emailAuthVerify` instead. See the [Headless API](/api-reference/ui-modes/headless) for full examples.
 </Info>
 
 <Warning>
@@ -166,14 +182,14 @@ Access current chain information and switch networks.
 ```typescript
 import { sepolia } from 'viem/chains';
 
-const { chainId, switchChain, isPending, error } = useChain();
+const { chainId, switchChain, error } = useChain();
 
 await switchChain(sepolia.id, sepolia);
 ```
 
 <Expandable title="Return values">
-  <ParamField body="chainId" type="string | undefined">
-    The current chain ID as a hex string.
+  <ParamField body="chainId" type="number | null">
+    The current chain ID as a decimal number, or `null` if no wallet is connected.
   </ParamField>
   <ParamField body="switchChain" type="(chainId: number | string, chain?: Chain) => Promise<void>">
     Switches to the specified chain. Pass the chain definition to prompt the user to add it if it's not yet configured.

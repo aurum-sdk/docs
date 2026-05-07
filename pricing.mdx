@@ -3,9 +3,9 @@ title: "Pricing"
 icon: "dollar-sign"
 ---
 
-Aurum is free to integrate and use.
+Aurum is free to integrate and use. Two third-party services it depends on (Coinbase CDP and Reown) have their own pricing — both offer a free tier that's enough for most apps.
 
-### Email Wallet
+### Email Wallet (Coinbase CDP)
 
 The email wallet is powered by Coinbase Embedded Wallets, which offers a free tier and charges only if your usage goes beyond those limits. Billing is tied to your project ID, which is managed in your [Coinbase Developer Portal](https://portal.cdp.coinbase.com/).
 
@@ -13,4 +13,14 @@ See here for [Embedded Wallets Pricing](https://docs.cdp.coinbase.com/embedded-w
 
 <Info>
   Email wallet can be disabled, in which case there is no cost. See [Configuration Options](/api-reference/core#configuration-options) for more on disabling wallets.
+</Info>
+
+### WalletConnect (Reown)
+
+`wallets.walletConnect.projectId` is required to use WalletConnect — without it, the WalletConnect option won't work. Project IDs are managed in the [Reown Dashboard](https://dashboard.reown.com/), which has a free tier with monthly active wallet limits and paid plans for higher volume.
+
+See here for [Reown pricing](https://reown.com/pricing) details.
+
+<Info>
+  WalletConnect can be excluded from the connection options if you don't need it. See [Configuration Options](/api-reference/core#configuration-options).
 </Info>

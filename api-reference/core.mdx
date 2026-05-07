@@ -146,7 +146,7 @@ const provider = new BrowserProvider(aurum.rpcProvider);
 </CodeGroup>
 
 <Expandable title="EIP-1193 Event listeners">
-  The provider emits standard EIP-1193 events
+  The provider emits standard EIP-1193 events. We recommend registering them on the `Aurum` instance directly (see [Event Listeners](#event-listeners) below) so they survive provider swaps on connect/disconnect.
 
   ```typescript
     aurum.rpcProvider.on?.('connect', (info: { chainId: string }) => { ... });
@@ -157,6 +157,18 @@ const provider = new BrowserProvider(aurum.rpcProvider);
 </Expandable>
 
 See full integration guides for [Viem](/integrations/viem), [Ethers v5](/integrations/ethers-v5) and [Ethers v6](/integrations/ethers-v6).
+
+### `ready`
+
+**Returns** `boolean`
+
+`true` once the SDK has finished initializing and restored any persisted connection. Synchronous companion to [`whenReady()`](#whenready) — useful for conditional render in components.
+
+```typescript
+if (aurum.ready) {
+  // safe to call rpcProvider, isConnected, getUserInfo, etc.
+}
+```
 
 ## Aurum Methods
 
@@ -294,4 +306,99 @@ Updates the wallets configuration at runtime. Currently only supports `exclude`.
 import { WalletId } from '@aurum-sdk/types';
 
 aurum.updateWalletsConfig({ exclude: [WalletId.Phantom] });
+```
+
+## Event Listeners
+
+Subscribe to EIP-1193 events directly on the `Aurum` instance. Listeners registered here **survive provider swaps** when users connect, disconnect, or switch wallets — register once and they keep firing.
+
+```typescript
+const handleAccounts = (accounts: string[]) => {
+  console.log('accounts changed:', accounts);
+};
+
+aurum.on('accountsChanged', handleAccounts);
+aurum.on('chainChanged', (chainId: string) => { /* ... */ });
+aurum.on('connect', (info: { chainId: string }) => { /* ... */ });
+aurum.on('disconnect', () => { /* ... */ });
+
+// Remove a listener (off and removeListener are aliases)
+aurum.off('accountsChanged', handleAccounts);
+```
+
+### `on(event, listener)`
+
+**Returns** `void`
+
+Registers an EIP-1193 event listener. Supported events: `accountsChanged`, `chainChanged`, `connect`, `disconnect`.
+
+### `off(event, listener)` / `removeListener(event, listener)`
+
+**Returns** `void`
+
+Removes a previously registered listener. The two methods are aliases — use whichever fits your style.
+
+<Tip>
+  Prefer `aurum.on()` over `aurum.rpcProvider.on()`. The provider proxy is replaced on connect/disconnect, so listeners attached to it will silently stop firing after the user reconnects.
+</Tip>
+
+## Errors
+
+All public methods on `Aurum` throw typed errors that extend `AurumError`. Discriminate failures via `instanceof` or the stable `code` field instead of parsing message strings.
+
+```typescript
+import {
+  UserRejectedError,
+  ChainSwitchRejectedError,
+  WalletNotInstalledError,
+  WalletNotConfiguredError,
+  WalletExcludedError,
+  ChainNotSupportedError,
+  InvalidConfigError,
+  ConnectionError,
+  AurumError,
+} from '@aurum-sdk/core';
+
+try {
+  await aurum.connect();
+} catch (err) {
+  if (err instanceof UserRejectedError) {
+    // user closed the modal or denied the request
+  } else if (err instanceof WalletNotInstalledError) {
+    console.log(`${err.walletId} is not installed`);
+  } else if (err instanceof AurumError) {
+    console.log(err.code, err.message);
+  }
+}
+```
+
+<Expandable title="Error classes and codes">
+  | Class | `code` | Thrown when |
+  | --- | --- | --- |
+  | `UserRejectedError` | `USER_REJECTED` | User cancels a connection or signing request. |
+  | `ChainSwitchRejectedError` | `CHAIN_SWITCH_REJECTED` | User rejects a `switchChain` request. |
+  | `WalletNotInstalledError` | `WALLET_NOT_INSTALLED` | Direct connect to a wallet whose extension isn't installed. Carries `.walletId`. |
+  | `WalletNotConfiguredError` | `WALLET_NOT_CONFIGURED` | Wallet selected but missing required config (e.g. `walletConnect.projectId`). Carries `.walletId`. |
+  | `WalletExcludedError` | `WALLET_EXCLUDED` | Direct connect to a wallet listed in `wallets.exclude`. Carries `.walletId`. |
+  | `ChainNotSupportedError` | `CHAIN_NOT_SUPPORTED` | Target chain isn't supported by the connected wallet. |
+  | `InvalidConfigError` | `INVALID_CONFIG` | Misuse of the API — e.g. `connect('email')` instead of `emailAuthStart()`. |
+  | `ConnectionError` | `CONNECTION_FAILED` | Generic connection failure not covered above. |
+  | `AurumError` | _(abstract)_ | Base class — use for catch-all branches. |
+</Expandable>
+
+### `normalizeError(err, context?)`
+
+**Returns** `AurumError`
+
+Wraps an unknown thrown value into the typed hierarchy. Useful if you're catching errors from a wrapper layer where the original wallet error has already been re-thrown as a generic `Error`.
+
+```typescript
+import { normalizeError, UserRejectedError } from '@aurum-sdk/core';
+
+try {
+  await someWrapper();
+} catch (err) {
+  const aurumErr = normalizeError(err, { operation: 'switchChain' });
+  if (aurumErr instanceof UserRejectedError) { /* ... */ }
+}
 ```
