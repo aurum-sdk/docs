@@ -356,6 +356,7 @@ import {
   ChainNotSupportedError,
   InvalidConfigError,
   ConnectionError,
+  AdapterLoadError,
   AurumError,
 } from '@aurum-sdk/core';
 
@@ -383,6 +384,7 @@ try {
   | `ChainNotSupportedError` | `CHAIN_NOT_SUPPORTED` | Target chain isn't supported by the connected wallet. |
   | `InvalidConfigError` | `INVALID_CONFIG` | Misuse of the API — e.g. `connect('email')` instead of `emailAuthStart()`. |
   | `ConnectionError` | `CONNECTION_FAILED` | Generic connection failure not covered above. |
+  | `AdapterLoadError` | `ADAPTER_LOAD_FAILED` | A wallet adapter chunk failed to load (e.g. network drop, stale chunk after redeploy). Carries `.walletId` and `.cause`. The cache evicts on failure so the next call retries. |
   | `AurumError` | _(abstract)_ | Base class — use for catch-all branches. |
 </Expandable>
 
