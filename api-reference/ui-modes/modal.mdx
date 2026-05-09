@@ -31,6 +31,9 @@ const address = await connect();
 Control the modal appearance through the `brand` configuration:
 
 ```typescript
+import { Aurum } from '@aurum-sdk/core';
+import { WalletId } from '@aurum-sdk/types';
+
 const aurum = new Aurum({
   brand: {
     appName: 'My App',
@@ -46,7 +49,7 @@ const aurum = new Aurum({
   wallets: {
     embedded: { projectId: 'your-cdp-id' },
     walletConnect: { projectId: 'your-reown-id' },
-    exclude: ['rabby', 'brave'], // hide specific wallets
+    exclude: [WalletId.Rabby, WalletId.Brave], // hide specific wallets
   },
 });
 ```
