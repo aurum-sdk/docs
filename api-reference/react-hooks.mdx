@@ -137,7 +137,7 @@ await connect(WalletId.MetaMask);
 ```
 
 <Expandable title="Return values">
-  <ParamField body="connect" type="(walletId?: WalletId) => Promise<string>">
+  <ParamField body="connect" type="(walletId?: WalletId) => Promise<`0x${string}`>">
     Opens the modal or connects directly if `walletId` is provided. Returns the connected address.
   </ParamField>
   <ParamField body="emailAuthStart" type="(email: string) => Promise<{ flowId: string }>">

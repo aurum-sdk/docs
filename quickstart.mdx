@@ -21,135 +21,290 @@ description: "Build your dapp with Aurum in minutes"
 
 ## Installation
 
-Install the Aurum SDK and viem (or the web3 library of your choice)
+Aurum is a React-only SDK — install `@aurum-sdk/core` together with `@aurum-sdk/hooks`.
 
 <CodeGroup>
 
 ```bash pnpm
-pnpm add @aurum-sdk/core viem
+pnpm add @aurum-sdk/core @aurum-sdk/hooks
 ```
 
 
 ```bash npm
-npm install @aurum-sdk/core viem
+npm install @aurum-sdk/core @aurum-sdk/hooks
 ```
 
 
 ```bash yarn
-yarn add @aurum-sdk/core viem
+yarn add @aurum-sdk/core @aurum-sdk/hooks
 ```
 
 
 ```bash bun
-bun add @aurum-sdk/core viem
+bun add @aurum-sdk/core @aurum-sdk/hooks
 ```
 
 </CodeGroup>
 
-<Tip>
-  **Using React?** Install `@aurum-sdk/hooks` alongside core for `useAccount`, `useConnect`, `useDisconnect`, and `useChain`. The state management below becomes a one-liner. See the [React Hooks reference](/api-reference/react-hooks).
-</Tip>
+<Note>
+  Requires React 18 or 19. If you'd rather skip the hooks package and manage state yourself, see [Using core without hooks](#using-core-without-hooks) below.
+</Note>
 
 ## Setup
 
-1. Initialize Aurum
+Pick your framework — both end up at the same three-file layout: an `aurum` instance, an `AurumProvider` at the root, and a component that uses the hooks.
 
-```typescript
-import { Aurum } from '@aurum-sdk/core';
+<Tabs>
+  <Tab title="Next.js (App Router)">
+    **1. Create the Aurum instance** in `lib/aurum.ts`:
 
-const aurum = new Aurum({
-  brand: {
-    appName: 'My App',
-  },
-  wallets: {
-    embedded: { projectId: 'your-cdp-project-id' },
-    walletConnect: { projectId: 'your-reown-project-id' },
-  },
-});
+    ```typescript
+    import { Aurum } from '@aurum-sdk/core';
+
+    export const aurum = new Aurum({
+      brand: { appName: 'My App' },
+      wallets: {
+        embedded: { projectId: 'your-cdp-project-id' },
+        walletConnect: { projectId: 'your-reown-project-id' },
+      },
+    });
+    ```
+
+    **2. Wrap the app** in a client-component provider. Create `app/providers.tsx`:
+
+    ```tsx
+    'use client';
+
+    import { AurumProvider } from '@aurum-sdk/hooks';
+    import { aurum } from '@/lib/aurum';
+
+    export function Providers({ children }: { children: React.ReactNode }) {
+      return <AurumProvider aurum={aurum}>{children}</AurumProvider>;
+    }
+    ```
+
+    Then in `app/layout.tsx`:
+
+    ```tsx
+    import { Providers } from './providers';
+
+    export default function RootLayout({ children }: { children: React.ReactNode }) {
+      return (
+        <html lang="en">
+          <body>
+            <Providers>{children}</Providers>
+          </body>
+        </html>
+      );
+    }
+    ```
+
+    **3. Connect, disconnect, and read state** with hooks. Any component that uses Aurum needs `'use client'`:
+
+    ```tsx
+    'use client';
+
+    import { useAccount, useConnect, useDisconnect } from '@aurum-sdk/hooks';
+
+    export default function Home() {
+      const { publicAddress, isConnected, isInitializing } = useAccount();
+      const { connect, isPending } = useConnect();
+      const { disconnect } = useDisconnect();
+
+      if (isInitializing) return <div>Loading...</div>;
+
+      return (
+        <div>
+          {isConnected ? (
+            <>
+              <p>Connected: {publicAddress}</p>
+              <button onClick={() => disconnect()}>Disconnect</button>
+            </>
+          ) : (
+            <button onClick={() => connect()} disabled={isPending}>
+              {isPending ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          )}
+        </div>
+      );
+    }
+    ```
+
+    <Info>
+      Aurum is browser-only (Shadow DOM + `localStorage`). Keep `AurumProvider` and any component that calls Aurum hooks inside a `'use client'` boundary. Server Components must not import from `@aurum-sdk/core` or `@aurum-sdk/hooks`.
+    </Info>
+  </Tab>
+
+  <Tab title="Vite">
+    **1. Create the Aurum instance** in `src/lib/aurum.ts`:
+
+    ```typescript
+    import { Aurum } from '@aurum-sdk/core';
+
+    export const aurum = new Aurum({
+      brand: { appName: 'My App' },
+      wallets: {
+        embedded: { projectId: 'your-cdp-project-id' },
+        walletConnect: { projectId: 'your-reown-project-id' },
+      },
+    });
+    ```
+
+    **2. Wrap the app** in `src/main.tsx`:
+
+    ```tsx
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    import { AurumProvider } from '@aurum-sdk/hooks';
+    import App from './App';
+    import { aurum } from './lib/aurum';
+
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <AurumProvider aurum={aurum}>
+          <App />
+        </AurumProvider>
+      </React.StrictMode>,
+    );
+    ```
+
+    **3. Connect, disconnect, and read state** with hooks in `src/App.tsx`:
+
+    ```tsx
+    import { useAccount, useConnect, useDisconnect } from '@aurum-sdk/hooks';
+
+    export default function App() {
+      const { publicAddress, isConnected, isInitializing } = useAccount();
+      const { connect, isPending } = useConnect();
+      const { disconnect } = useDisconnect();
+
+      if (isInitializing) return <div>Loading...</div>;
+
+      return (
+        <div>
+          {isConnected ? (
+            <>
+              <p>Connected: {publicAddress}</p>
+              <button onClick={() => disconnect()}>Disconnect</button>
+            </>
+          ) : (
+            <button onClick={() => connect()} disabled={isPending}>
+              {isPending ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          )}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  The `Aurum` constructor returns the existing instance if one already exists — instantiating a second time with different config is a no-op. Always export a single instance from `lib/aurum.ts` (or equivalent) and import it everywhere.
+</Tip>
+
+## Sign a Message
+
+Aurum exposes an EIP-1193 provider via `aurum.rpcProvider` that works with any web3 library.
+
+```bash
+pnpm add viem
 ```
 
-2. Create Viem client (or the web3 library of your choice)
+```tsx
+'use client'; // Next.js App Router only
 
-```typescript
 import { createWalletClient, custom } from 'viem';
-import { aurum } from "./aurum";
+import { useAccount } from '@aurum-sdk/hooks';
+import { aurum } from '@/lib/aurum';
 
 const walletClient = createWalletClient({
   transport: custom(aurum.rpcProvider),
 });
-```
 
-3. Add basic state management (`connect`, `disconnect`, `personal_sign`, `accountsChanged`, etc)
-
-```typescript
-import { useEffect, useState } from "react";
-import { aurum } from "./aurum";
-import { walletClient } from "./viem";
-
-export default function App() {
-  const [address, setAddress] = useState<`0x${string}` | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check if connected on page load
-  useEffect(() => {
-    aurum.isConnected().then(async (isConnected) => {
-      if (isConnected) {
-        const user = await aurum.getUserInfo();
-        setAddress(user?.publicAddress ?? null);
-      }
-      setIsLoading(false);
-    });
-  }, []);
-
-  // Listen for account changes
-  useEffect(() => {
-    const handleAccountsChanged = (accounts: string[]) => {
-      setAddress(accounts[0] ?? null);
-    };
-
-    aurum.rpcProvider.on?.("accountsChanged", handleAccountsChanged);
-
-    return () => {
-      aurum.rpcProvider.off?.("accountsChanged", handleAccountsChanged);
-    };
-  }, []);
-
-  async function connect() {
-    const publicAddress = await aurum.connect();
-    setAddress(publicAddress);
-  }
-
-  async function disconnect() {
-    await aurum.disconnect();
-    setAddress(null);
-  }
+export function SignMessageButton() {
+  const { publicAddress, isConnected } = useAccount();
 
   async function signMessage() {
-    const [account] = await walletClient.getAddresses();
+    if (!publicAddress) return;
     const signature = await walletClient.signMessage({
-      account,
-      message: "Hello from Aurum!",
+      account: publicAddress as `0x${string}`,
+      message: 'Hello from Aurum!',
     });
-    console.log("signature", signature);
+    console.log('signature', signature);
   }
 
-  if (isLoading) return <div>Loading...</div>;
-
   return (
-    <div>
-      {!address ? (
-        <button onClick={connect}>Connect Wallet</button>
-      ) : (
-        <div>
-          <p>User: {address}</p>
-          <button onClick={signMessage}>Sign Message</button>
-          <button onClick={disconnect}>Disconnect</button>
-        </div>
-      )}
-    </div>
+    <button onClick={signMessage} disabled={!isConnected}>
+      Sign Message
+    </button>
   );
 }
 ```
+
+See [Viem](/api-reference/integrations/viem), [Ethers v5](/api-reference/integrations/ethers-v5), or [Ethers v6](/api-reference/integrations/ethers-v6) for full sign / send / contract examples.
+
+## Using core without hooks
+
+If you'd rather not install `@aurum-sdk/hooks`, you can drive `@aurum-sdk/core` directly with manual state.
+
+<Expandable title="Manual state management example">
+  ```tsx
+  'use client'; // Next.js App Router only
+
+  import { useEffect, useState } from 'react';
+  import { aurum } from './lib/aurum';
+
+  export default function App() {
+    const [address, setAddress] = useState<`0x${string}` | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Restore persisted connection on mount
+    useEffect(() => {
+      aurum.whenReady().then(async () => {
+        if (await aurum.isConnected()) {
+          const user = await aurum.getUserInfo();
+          setAddress((user?.publicAddress as `0x${string}`) ?? null);
+        }
+        setIsLoading(false);
+      });
+    }, []);
+
+    // Listen for account changes — register on `aurum`, NOT `aurum.rpcProvider`
+    useEffect(() => {
+      const handleAccountsChanged = (accounts: string[]) => {
+        setAddress((accounts[0] as `0x${string}`) ?? null);
+      };
+
+      aurum.on('accountsChanged', handleAccountsChanged);
+      return () => aurum.off('accountsChanged', handleAccountsChanged);
+    }, []);
+
+    if (isLoading) return <div>Loading...</div>;
+
+    return (
+      <div>
+        {!address ? (
+          <button onClick={() => aurum.connect().then(setAddress)}>
+            Connect Wallet
+          </button>
+        ) : (
+          <div>
+            <p>User: {address}</p>
+            <button onClick={() => aurum.disconnect().then(() => setAddress(null))}>
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  ```
+
+  <Warning>
+    Always register listeners on the `aurum` instance (`aurum.on(...)`), not on `aurum.rpcProvider`. The provider proxy is replaced on connect/disconnect, so listeners attached to it will silently stop firing.
+  </Warning>
+</Expandable>
 
 ## Next Steps
 

@@ -1,0 +1,233 @@
+---
+title: "TanStack Start"
+icon: "router"
+description: "Integrate Aurum into a TanStack Start app"
+---
+
+TanStack Start is a full-stack React framework with classic SSR + hydration (no React Server Components). Aurum's `AurumProvider` is `'use client'`-marked and SSR-safe — `getServerSnapshot` returns the initializing state on the server, then the real connection state hydrates on the client. No special boundaries are needed.
+
+## Install
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash npm
+npm install @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash bun
+bun add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+</CodeGroup>
+
+<Note>
+  Requires React 18 or 19.
+</Note>
+
+## 1. Create the Aurum instance
+
+```typescript src/lib/aurum.ts
+import { Aurum } from '@aurum-sdk/core';
+
+export const aurum = new Aurum({
+  brand: { appName: 'My App' },
+  wallets: {
+    embedded: { projectId: import.meta.env.VITE_CDP_PROJECT_ID },
+    walletConnect: { projectId: import.meta.env.VITE_REOWN_PROJECT_ID },
+  },
+});
+```
+
+The `Aurum` constructor is SSR-safe — it guards `window` and `localStorage` access internally — so this module imports cleanly on both server and client.
+
+<Tip>
+  `new Aurum()` is a singleton; calling it again returns the existing instance. Keep this file as the only place you construct it, and import `aurum` from here everywhere else.
+</Tip>
+
+## 2. Wrap the root route
+
+`AurumProvider` lives in the root route's component, around the `<Outlet />`:
+
+```tsx src/routes/__root.tsx
+import { createRootRoute, Outlet, Scripts } from '@tanstack/react-router';
+import { AurumProvider } from '@aurum-sdk/hooks';
+import { aurum } from '../lib/aurum';
+
+export const Route = createRootRoute({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <RootDocument>
+      <AurumProvider aurum={aurum}>
+        <Outlet />
+      </AurumProvider>
+    </RootDocument>
+  );
+}
+
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+## 3. Build a connect button
+
+Use the hooks anywhere in your route tree — no extra boundary needed.
+
+```tsx src/components/ConnectButton.tsx
+import { useAccount, useConnect, useDisconnect } from '@aurum-sdk/hooks';
+
+export function ConnectButton() {
+  const { publicAddress, isConnected, isInitializing } = useAccount();
+  const { connect, isPending, error } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  if (isInitializing) return <button disabled>Loading...</button>;
+
+  if (isConnected) {
+    return (
+      <div>
+        <span>{publicAddress?.slice(0, 6)}…{publicAddress?.slice(-4)}</span>
+        <button onClick={() => disconnect()}>Disconnect</button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button onClick={() => connect()} disabled={isPending}>
+        {isPending ? 'Connecting...' : 'Connect Wallet'}
+      </button>
+      {error && <p role="alert">{error.message}</p>}
+    </>
+  );
+}
+```
+
+<Info>
+  `isInitializing` is `true` during SSR and during the brief client-side connection-restore. Always render a placeholder so the server-rendered HTML and the first client paint match.
+</Info>
+
+Drop it into a route like any other component:
+
+```tsx src/routes/index.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { ConnectButton } from '../components/ConnectButton';
+
+export const Route = createFileRoute('/')({
+  component: HomeComponent,
+});
+
+function HomeComponent() {
+  return (
+    <main>
+      <h1>Welcome</h1>
+      <ConnectButton />
+    </main>
+  );
+}
+```
+
+## 4. Sign a message
+
+```bash
+pnpm add viem
+```
+
+```tsx src/components/SignMessageButton.tsx
+import { createWalletClient, custom } from 'viem';
+import { useAccount } from '@aurum-sdk/hooks';
+import { aurum } from '../lib/aurum';
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+
+export function SignMessageButton() {
+  const { publicAddress, isConnected } = useAccount();
+
+  async function signMessage() {
+    if (!publicAddress) return;
+    const signature = await walletClient.signMessage({
+      account: publicAddress as `0x${string}`,
+      message: 'Hello from Aurum!',
+    });
+    console.log('signature', signature);
+  }
+
+  return (
+    <button onClick={signMessage} disabled={!isConnected}>
+      Sign Message
+    </button>
+  );
+}
+```
+
+See the [Viem](/api-reference/integrations/viem), [Ethers v5](/api-reference/integrations/ethers-v5), or [Ethers v6](/api-reference/integrations/ethers-v6) pages for the full surface.
+
+## Server-side caveats
+
+- **Route loaders and server functions cannot read wallet state.** Loaders run on the server, where there is no wallet connection. Read the wallet client-side and pass any signed/derived data to server functions (e.g. via SIWE).
+- **`beforeLoad` cannot gate routes by connection.** Use a client-side guard component or read `useAccount()` inside the route component instead.
+- **Don't construct multiple `Aurum` instances per route.** Keep one `src/lib/aurum.ts` import everywhere.
+
+## Common patterns
+
+### Client-side route guard
+
+```tsx src/components/RequireConnection.tsx
+import { useAccount } from '@aurum-sdk/hooks';
+import { Navigate } from '@tanstack/react-router';
+
+export function RequireConnection({ children }: { children: React.ReactNode }) {
+  const { isConnected, isInitializing } = useAccount();
+
+  if (isInitializing) return <div>Loading...</div>;
+  if (!isConnected) return <Navigate to="/" />;
+  return <>{children}</>;
+}
+```
+
+Wrap any protected route's component in `<RequireConnection>`.
+
+### Sign-in with Ethereum (SIWE) for server functions
+
+Server functions can verify a signed message to prove ownership of an address — sign it client-side with viem/ethers, then pass `{ address, signature, message }` to the server function for verification.
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Customization" icon="palette" href="/customization">
+    Theme the modal
+  </Card>
+  <Card title="Headless mode" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build a fully custom UI
+  </Card>
+  <Card title="React Hooks" icon="atom-simple" href="/api-reference/react-hooks">
+    Hooks API reference
+  </Card>
+</CardGroup>

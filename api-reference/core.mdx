@@ -74,8 +74,8 @@ The `Aurum` instance accepts three configuration parameters - `brand`, `wallets`
   <ParamField body="walletConnect.projectId" type="string">
     Project ID for WalletConnect
   </ParamField>
-  <ParamField body="exclude" type="WalletId[]">
-    Wallet IDs to hide from the connection UI (`['email', 'metamask', etc]`)
+  <ParamField body="exclude" type="WalletId[] | string[]">
+    Wallet IDs to hide from the connection UI. Accepts the `WalletId` enum (recommended for IDE autocomplete and refactor safety) or the equivalent string literals — e.g. `[WalletId.Email, WalletId.Phantom]` or `['email', 'phantom']`.
   </ParamField>
 </Accordion>
 
@@ -156,7 +156,7 @@ const provider = new BrowserProvider(aurum.rpcProvider);
   ```
 </Expandable>
 
-See full integration guides for [Viem](/integrations/viem), [Ethers v5](/integrations/ethers-v5) and [Ethers v6](/integrations/ethers-v6).
+See full integration guides for [Viem](/api-reference/integrations/viem), [Ethers v5](/api-reference/integrations/ethers-v5) and [Ethers v6](/api-reference/integrations/ethers-v6).
 
 ### `ready`
 

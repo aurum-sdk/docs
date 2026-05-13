@@ -16,9 +16,12 @@ description: "Common questions and troubleshooting"
     No. Coinbase Embedded Wallets (email) can be disabled
 
     ```typescript
-        const aurum = new Aurum({ 
-          wallets: { 
-            exclude: ['email'],
+        import { Aurum } from '@aurum-sdk/core';
+        import { WalletId } from '@aurum-sdk/types';
+
+        const aurum = new Aurum({
+          wallets: {
+            exclude: [WalletId.Email],
           },
         });
     ```
