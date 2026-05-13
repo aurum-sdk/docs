@@ -1,0 +1,226 @@
+---
+title: "Next.js"
+icon: "n"
+description: "Integrate Aurum into a Next.js App Router app"
+---
+
+This guide covers Next.js with the App Router. Aurum is browser-only (Shadow DOM, `localStorage`, EIP-1193 events) so the integration centers around getting the `'use client'` boundary right. A short [Pages Router note](#pages-router) is at the bottom.
+
+## Install
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash npm
+npm install @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash bun
+bun add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+</CodeGroup>
+
+<Note>
+  Requires React 18 or 19 and Next.js 13.4+ (App Router).
+</Note>
+
+## 1. Create the Aurum instance
+
+```typescript lib/aurum.ts
+import { Aurum } from '@aurum-sdk/core';
+
+export const aurum = new Aurum({
+  brand: { appName: 'My App' },
+  wallets: {
+    embedded: { projectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID! },
+    walletConnect: { projectId: process.env.NEXT_PUBLIC_REOWN_PROJECT_ID! },
+  },
+});
+```
+
+<Info>
+  Use `NEXT_PUBLIC_*` env vars — both project IDs are needed in the browser. Never put a server-only secret here.
+</Info>
+
+The `Aurum` constructor is **SSR-safe** — it guards `window` / `localStorage` access internally — so importing this module from a Server Component will not throw. But the modal, hooks, and event listeners only run in the browser, so any component that *uses* Aurum must be a Client Component.
+
+## 2. Create a client-side provider
+
+The `AurumProvider` itself is a client boundary, so it lives in its own `'use client'` file.
+
+```tsx app/providers.tsx
+'use client';
+
+import { AurumProvider } from '@aurum-sdk/hooks';
+import { aurum } from '@/lib/aurum';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <AurumProvider aurum={aurum}>{children}</AurumProvider>;
+}
+```
+
+## 3. Wrap the root layout
+
+```tsx app/layout.tsx
+import { Providers } from './providers';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+`layout.tsx` itself stays a Server Component — only the `Providers` wrapper crosses into the client.
+
+## 4. Build a connect button
+
+Any component that calls Aurum hooks needs `'use client'`.
+
+```tsx app/components/ConnectButton.tsx
+'use client';
+
+import { useAccount, useConnect, useDisconnect } from '@aurum-sdk/hooks';
+
+export function ConnectButton() {
+  const { publicAddress, isConnected, isInitializing } = useAccount();
+  const { connect, isPending, error } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  if (isInitializing) return <button disabled>Loading...</button>;
+
+  if (isConnected) {
+    return (
+      <div>
+        <span>{publicAddress?.slice(0, 6)}…{publicAddress?.slice(-4)}</span>
+        <button onClick={() => disconnect()}>Disconnect</button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button onClick={() => connect()} disabled={isPending}>
+        {isPending ? 'Connecting...' : 'Connect Wallet'}
+      </button>
+      {error && <p role="alert">{error.message}</p>}
+    </>
+  );
+}
+```
+
+<Tip>
+  `isInitializing` is `true` while Aurum restores any persisted connection. Always render a placeholder — otherwise users see a flash of the disconnected state on every page load.
+</Tip>
+
+You can drop `<ConnectButton />` into any Server Component page; the `'use client'` boundary stays inside the component tree without infecting the rest of the page.
+
+```tsx app/page.tsx
+import { ConnectButton } from './components/ConnectButton';
+
+export default function Home() {
+  return (
+    <main>
+      <h1>Welcome</h1>
+      <ConnectButton />
+    </main>
+  );
+}
+```
+
+## 5. Sign a message
+
+```bash
+pnpm add viem
+```
+
+```tsx app/components/SignMessageButton.tsx
+'use client';
+
+import { createWalletClient, custom } from 'viem';
+import { useAccount } from '@aurum-sdk/hooks';
+import { aurum } from '@/lib/aurum';
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+
+export function SignMessageButton() {
+  const { publicAddress, isConnected } = useAccount();
+
+  async function signMessage() {
+    if (!publicAddress) return;
+    const signature = await walletClient.signMessage({
+      account: publicAddress as `0x${string}`,
+      message: 'Hello from Aurum!',
+    });
+    console.log('signature', signature);
+  }
+
+  return (
+    <button onClick={signMessage} disabled={!isConnected}>
+      Sign Message
+    </button>
+  );
+}
+```
+
+See the [Viem](/api-reference/integrations/viem), [Ethers v5](/api-reference/integrations/ethers-v5), or [Ethers v6](/api-reference/integrations/ethers-v6) pages for the full surface.
+
+## Server-side caveats
+
+A few things that **don't** work the way you might expect:
+
+- **Server Components cannot use Aurum hooks.** Wallet state lives in the browser. Read it from a Client Component and pass it down via context or props.
+- **Middleware and Route Handlers cannot read wallet state.** They run on the server, where there is no wallet connection. If you need server-side auth, sign a SIWE message client-side and verify it in a Route Handler.
+- **Don't dynamic-import Aurum with `ssr: false`** unless you're seeing a real hydration warning. The SDK is SSR-safe out of the box and `ssr: false` would defeat the persisted-connection restore on first paint.
+- **Don't construct multiple `Aurum` instances per route.** The constructor returns the existing instance and warns if the new config differs. Keep one `lib/aurum.ts` import everywhere.
+
+## Pages Router
+
+The Pages Router setup is the same idea — wrap `<Component />` in `_app.tsx`:
+
+```tsx pages/_app.tsx
+import type { AppProps } from 'next/app';
+import { AurumProvider } from '@aurum-sdk/hooks';
+import { aurum } from '@/lib/aurum';
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <AurumProvider aurum={aurum}>
+      <Component {...pageProps} />
+    </AurumProvider>
+  );
+}
+```
+
+You don't need `'use client'` directives in the Pages Router — every component is rendered on the client by default.
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Customization" icon="palette" href="/customization">
+    Theme the modal
+  </Card>
+  <Card title="Headless mode" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build a fully custom UI
+  </Card>
+  <Card title="React Hooks" icon="atom-simple" href="/api-reference/react-hooks">
+    Hooks API reference
+  </Card>
+</CardGroup>

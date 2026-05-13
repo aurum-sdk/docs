@@ -1,0 +1,228 @@
+---
+title: "React"
+icon: "react"
+description: "Integrate Aurum into a Vite + React app"
+---
+
+This guide walks through a full Aurum integration in a client-side React app (Vite, Create React App, or any non-SSR React setup). For frameworks with server rendering, see the [Next.js](/guides/nextjs) or [TanStack Start](/guides/tanstack-start) guides.
+
+## Install
+
+<CodeGroup>
+
+```bash pnpm
+pnpm add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash npm
+npm install @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash yarn
+yarn add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+
+```bash bun
+bun add @aurum-sdk/core @aurum-sdk/hooks
+```
+
+</CodeGroup>
+
+<Note>
+  Requires React 18 or 19.
+</Note>
+
+## 1. Create the Aurum instance
+
+Put the instance in its own module so the entire app imports the same singleton.
+
+```typescript src/lib/aurum.ts
+import { Aurum } from '@aurum-sdk/core';
+
+export const aurum = new Aurum({
+  brand: { appName: 'My App' },
+  wallets: {
+    embedded: { projectId: import.meta.env.VITE_CDP_PROJECT_ID },
+    walletConnect: { projectId: import.meta.env.VITE_REOWN_PROJECT_ID },
+  },
+});
+```
+
+<Tip>
+  `new Aurum()` is a singleton — calling it again returns the existing instance and warns if the config differs. Keep this file as the only place you construct it.
+</Tip>
+
+## 2. Wrap the app in `AurumProvider`
+
+```tsx src/main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { AurumProvider } from '@aurum-sdk/hooks';
+import App from './App';
+import { aurum } from './lib/aurum';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AurumProvider aurum={aurum}>
+      <App />
+    </AurumProvider>
+  </React.StrictMode>,
+);
+```
+
+## 3. Build a connect button
+
+`useAccount` exposes connection state (and rerenders on `accountsChanged` automatically). `useConnect` and `useDisconnect` trigger the modal flows.
+
+```tsx src/components/ConnectButton.tsx
+import { useAccount, useConnect, useDisconnect } from '@aurum-sdk/hooks';
+
+export function ConnectButton() {
+  const { publicAddress, isConnected, isInitializing } = useAccount();
+  const { connect, isPending, error } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  if (isInitializing) return <button disabled>Loading...</button>;
+
+  if (isConnected) {
+    return (
+      <div>
+        <span>{publicAddress?.slice(0, 6)}…{publicAddress?.slice(-4)}</span>
+        <button onClick={() => disconnect()}>Disconnect</button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button onClick={() => connect()} disabled={isPending}>
+        {isPending ? 'Connecting...' : 'Connect Wallet'}
+      </button>
+      {error && <p role="alert">{error.message}</p>}
+    </>
+  );
+}
+```
+
+<Info>
+  `isInitializing` is `true` while Aurum restores any persisted connection from the previous session. Always render a placeholder to avoid a flash of "disconnected" state on reload.
+</Info>
+
+## 4. Sign a message
+
+`aurum.rpcProvider` is EIP-1193 compatible — wire it into viem or ethers.
+
+```bash
+pnpm add viem
+```
+
+```tsx src/components/SignMessageButton.tsx
+import { createWalletClient, custom } from 'viem';
+import { useAccount } from '@aurum-sdk/hooks';
+import { aurum } from '../lib/aurum';
+
+const walletClient = createWalletClient({
+  transport: custom(aurum.rpcProvider),
+});
+
+export function SignMessageButton() {
+  const { publicAddress, isConnected } = useAccount();
+
+  async function signMessage() {
+    if (!publicAddress) return;
+    const signature = await walletClient.signMessage({
+      account: publicAddress as `0x${string}`,
+      message: 'Hello from Aurum!',
+    });
+    console.log('signature', signature);
+  }
+
+  return (
+    <button onClick={signMessage} disabled={!isConnected}>
+      Sign Message
+    </button>
+  );
+}
+```
+
+See the [Viem](/api-reference/integrations/viem), [Ethers v5](/api-reference/integrations/ethers-v5), or [Ethers v6](/api-reference/integrations/ethers-v6) integration pages for the full surface (transactions, contract reads/writes).
+
+## 5. Switch chains
+
+```tsx src/components/SwitchChainButton.tsx
+import { sepolia } from 'viem/chains';
+import { useChain } from '@aurum-sdk/hooks';
+
+export function SwitchChainButton() {
+  const { chainId, switchChain, error } = useChain();
+
+  return (
+    <>
+      <p>Current chain: {chainId ?? 'not connected'}</p>
+      <button onClick={() => switchChain(sepolia.id, sepolia)}>
+        Switch to Sepolia
+      </button>
+      {error && <p role="alert">{error.message}</p>}
+    </>
+  );
+}
+```
+
+Pass the full `Chain` object so wallets that haven't added it yet can prompt the user to do so.
+
+## Common patterns
+
+### Gate content behind a connection
+
+```tsx
+import { useAccount } from '@aurum-sdk/hooks';
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isConnected, isInitializing } = useAccount();
+
+  if (isInitializing) return <div>Loading...</div>;
+  if (!isConnected) return <div>Please connect your wallet to continue.</div>;
+  return <>{children}</>;
+}
+```
+
+### Handle user-rejected and wallet-not-installed errors
+
+```tsx
+import { UserRejectedError, WalletNotInstalledError } from '@aurum-sdk/core';
+import { WalletId } from '@aurum-sdk/types';
+import { useConnect } from '@aurum-sdk/hooks';
+
+const { connect } = useConnect();
+
+try {
+  await connect(WalletId.MetaMask);
+} catch (err) {
+  if (err instanceof UserRejectedError) {
+    // user closed the modal — do nothing
+  } else if (err instanceof WalletNotInstalledError) {
+    alert(`${err.walletId} extension is not installed`);
+  } else {
+    throw err;
+  }
+}
+```
+
+See [Errors](/api-reference/core#errors) for the full error class table.
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Customization" icon="palette" href="/customization">
+    Theme the modal
+  </Card>
+  <Card title="Headless mode" icon="code-simple" href="/api-reference/ui-modes/headless">
+    Build a fully custom UI
+  </Card>
+  <Card title="React Hooks" icon="atom-simple" href="/api-reference/react-hooks">
+    Hooks API reference
+  </Card>
+</CardGroup>

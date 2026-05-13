@@ -27,6 +27,20 @@
         ]
       },
       {
+        "tab": "Guides",
+        "icon": "compass",
+        "groups": [
+          {
+            "group": "Framework guides",
+            "pages": [
+              "guides/react",
+              "guides/nextjs",
+              "guides/tanstack-start"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API reference",
         "icon": "wallet",
         "groups": [
